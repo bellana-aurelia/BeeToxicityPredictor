@@ -1,0 +1,136 @@
+footer{
+    visibility: hidden;
+}
+
+.block-container {
+    padding-top: 2rem;
+    max-width: 1150px;
+}
+
+.hero {
+    background: linear-gradient(135deg, #F6C747 0%, #D18900 100%);
+    padding: 1.8rem 2.2rem;
+    border-radius: 22px;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 24px rgba(209,137,0,0.25);
+}
+
+.hero h1 {
+    color: #3b2a14;
+    margin-top: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.hero p {
+    color: #3b2a14;
+    font-size: 1.2rem;
+    margin-bottom: 0;
+}
+
+pill {
+    display: inline-block; 
+    background: rgba(255,255,255,0.55); 
+    color: #3b2a14;
+    padding: 0.2rem 0.8rem; 
+    border-radius: 999px; font-size: 0.8rem;
+    margin: 0.9rem 0.4rem 0 0; font-weight: 600;
+}
+
+.result-card {
+    background-color: #fff;
+    border-radius: 18px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.result-toxic {
+    background: #FDECEA;
+    border: 2px solid #F5C6CB;
+    color: #7B241C;
+}
+
+.result-safe {
+    background: #E8F5E9;
+    border: 2px solid #C8E6C9;
+    color: #1B5E20;
+}
+
+.result-card h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.result-card p {
+    margin: 0.3rem 0 0 0;
+    color: inherit;
+    opacity: 0.8;
+}
+
+
+.gauge {
+    width: 130px;
+    height: 130px;
+    background-color: #e0e0e0;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gauge-inner {
+    width: 94px; 
+    height: 94px; 
+    border-radius: 50%; 
+    background: #ffffff;
+    display: flex; 
+    flex-direction: column; 
+    align-items: center;
+    justify-content: 
+    center; color: #3b2a14;
+}
+
+.gauge-inner b {
+   font-size: 1.5rem;
+   line-height: 1.1;
+}
+
+.gauge-inner small {
+    font-size: 0.8rem;
+    color: #7a6a58
+}
+
+.mol-card {
+    background-color: #fff;
+    border-radius: 18px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.mol-card img {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 1rem;
+}
+
+.placeholder {
+    border: 2px dashed #E3C777;
+    border-radius: 18px;
+    padding: 2rem;
+    text-align: center;
+    color: #8a7340;
+}
+
+.placeholder span {
+    font-size: 3rem;
+}
+
