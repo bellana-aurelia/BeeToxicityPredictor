@@ -1,15 +1,18 @@
 import base64
-import os
 import pickle
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict
 
 import pandas as pd
-from scipy import stats
 import streamlit as st
 from rdkit import Chem
 from rdkit.Chem import Descriptors
-from rdkit.Chem.Draw import rdMolDraw2D
+try:  
+    from rdkit.Chem.Draw import rdMolDraw2D
+    HAS_DRAW = True
+except ImportError:
+    rdMolDraw2D = None
+    HAS_DRAW = False
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
@@ -178,9 +181,17 @@ DESC_LABELS = {
     "MolLogP": "Molecular LogP"
 }
 
+DESC_SHORT = {
+    "MolWt": "Mol. weight",
+    "TPSA": "TPSA",
+    "NumHDonors": "H-bond donors",
+    "NumHAcceptors": "H-bond acceptors",
+    "MolLogP": "LogP",
+}
+
 EXAMPLES = {
     "Imidacloprid": {
-        "smiles": "CC1=CC(=C(C=C1)N2C=NC=N2)C3=CN=CN3",
+        "smiles": "C1CN(C(=N1)N[N+](=O)[O-])CC2=CN=C(C=C2)Cl",
         "toxicity_type": "Oral",
         "herbicide": 0,
         "fungicide": 0,
@@ -196,7 +207,7 @@ EXAMPLES = {
         "other_agrochemical": 0
     },
     "Tebuconazole": {
-        "smiles": "CC(C)N1C=NC2=C1C(=CC=C2)C3=CC(=C(C=C3)Cl)Cl",
+        "smiles": "CC(C)(C)C(CCC1=CC=C(C=C1)Cl)(CN2C=NC=N2)O",
         "toxicity_type": "Oral",
         "herbicide": 0,
         "fungicide": 1,
@@ -216,12 +227,18 @@ def load_css(path: str = "style.css") -> None:
 def get_model() -> Pipeline:
     """Load the saved model if it exists, otherwise train and persist the deployed model."""
     if MODEL_PATH.exists():
-        with MODEL_PATH.open("rb") as fh:
-            return pickle.load(fh)
+        try:
+            with MODEL_PATH.open("rb") as fh:
+                return pickle.load(fh)
+        except Exception:
+            pass  # pickle rusak / beda versi scikit-learn -> latih ulang dari CSV
 
     model = build_model()
-    with MODEL_PATH.open("wb") as fh:
-        pickle.dump(model, fh)
+    try:
+        with MODEL_PATH.open("wb") as fh:
+            pickle.dump(model, fh)
+    except OSError:
+        pass  # filesystem read-only: tidak apa-apa, model tetap di-cache di memori
     return model
 
 @st.cache_data
@@ -235,7 +252,7 @@ def get_stats() -> dict:
     }
 
 def mol_to_svg(smiles: str) -> str:
-    """Convert a SMILES string to an SVG image."""
+    """Convert a SMILES string to an SVG image (needs the system libs in packages.txt)."""
     mol = Chem.MolFromSmiles(smiles)
     drawer = rdMolDraw2D.MolDraw2DSVG(300, 300)
     drawer.DrawMolecule(mol)
@@ -246,7 +263,7 @@ def mol_to_svg(smiles: str) -> str:
 def apply_example(name: str) -> None:
     ex = EXAMPLES[name]
     for k in ("smiles", "toxicity_type", "herbicide", "fungicide", "insecticide", "other_agrochemical"):
-        st.session_state[k] = ex[k]
+        st.session_state[k] = ex[k] if k in ("smiles", "toxicity_type") else bool(ex[k])
     st.session_state["result"] = None
 
 load_css()
@@ -258,7 +275,7 @@ defaults = {
     "toxicity_type": "Oral",
     "herbicide": False,
     "fungicide": False,
-    "insecticide": False,
+    "insecticide": True,
     "other_agrochemical": False,
     "result": None
 }
@@ -270,7 +287,7 @@ for k, v in defaults.items():
 with st.sidebar:
     st.markdown("## 🐝 About")
     st.write(
-        "This app predicts wheter an agrochemical is **toxic to honey bees**, "
+        "This app predicts whether an agrochemical is **toxic to honey bees**, "
         "using a Random Forest trained on the ApisTox dataset."
     )
     c1, c2 = st.columns(2)
@@ -303,7 +320,7 @@ left, right = st.columns([1, 1], gap = "large")
 with left:
     st.markdown("## 🧪 Compound input")
     with st.form("prediction_form"):
-        smiles = st.text_input("SMILES string", key="smiles", help="Example: COO (ethanol)")
+        smiles = st.text_input("SMILES string", key="smiles", help="Example: CCO (ethanol)")
         toxicity_type = st.radio("Toxicity type", ["Contact", "Oral", "Other"], horizontal=True, key="toxicity_type")
         st.markdown("**Agrochemical category**")
         a, b = st.columns(2)
@@ -314,6 +331,7 @@ with left:
         submitted = st.form_submit_button("Predict toxicity", use_container_width=True, type="primary")
         
     if submitted:
+        smiles = smiles.strip()
         if Chem.MolFromSmiles(smiles) is None:
             st.session_state["result"] = None
             st.error("Invalid SMILES string. Please enter a valid chemical structure.")
@@ -322,7 +340,7 @@ with left:
             st.session_state["result"] = {
                 "prob": float(model.predict_proba(row)[0][1]),
                 "desc": {c: float(row[c].iloc[0]) for c in DESC_COLS},
-                "svg": mol_to_svg(smiles)
+                "svg": mol_to_svg(smiles) if HAS_DRAW else None
             }
 
 with right:
@@ -330,8 +348,8 @@ with right:
     res = st.session_state["result"]
     if res is None:
         st.markdown(
-            '<div class="placeholder"><span>🧪</span><br><b>No prediction yet</b></br>'
-            "Enter a SMILES string and press <i>Predict toxicity</i><div>",
+            '<div class="placeholder"><span>🧪</span><br><b>No prediction yet</b><br>'
+            "Enter a SMILES string and press <i>Predict toxicity</i></div>",
             unsafe_allow_html=True
         )
     else:
@@ -349,6 +367,12 @@ with right:
             f"Threshold: {threshold:.2f}</p></div></div>",
             unsafe_allow_html=True,
         )
+        if res["svg"]:
+            svg_b64 = base64.b64encode(res["svg"].encode()).decode()
+            st.markdown(
+                f'<div class="mol-card"><img src="data:image/svg+xml;base64,{svg_b64}" alt="molecule"></div>',
+                unsafe_allow_html=True,
+            )
 
 res = st.session_state["result"]
 if res is not None:
@@ -356,7 +380,8 @@ if res is not None:
     cols = st.columns(5)
     for col, key in zip(cols, DESC_COLS):
         val = res["desc"][key]
-        col.metric(DESC_LABELS[key], f"{val:.2f}", help=f"{DESC_LABELS[key]}: {val:.2f}")
+        shown = f"{val:.0f}" if key.startswith("Num") else f"{val:.2f}"
+        col.metric(DESC_SHORT[key], shown, help=DESC_LABELS[key])
         
     outside = [DESC_LABELS[c] for c in DESC_COLS
                if not (stats["ranges"][c][0] <= res["desc"][c] <= stats["ranges"][c][1])]
